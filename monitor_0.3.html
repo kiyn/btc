@@ -1,0 +1,374 @@
+﻿<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Monitor Prezzo BTCUSDT e Grafico Evoluto</title>
+  <!-- Includo Font Awesome per le icone Unicode (opzionale) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" integrity="sha512-Fo3rlrZj/k7ujTnHg4C+6ZLid5E6/Tx9Jg5h3uP7STiW0XJ4V57o+OcHAPw3aTtsoM9ns61Ec+GCO2VJxYh0jQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <!-- Includo Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Inclusione di Moment.js e dell'adapter per le scale temporali di Chart.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      transition: background-color 0.5s;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+    }
+    .input-group {
+      margin-bottom: 10px;
+    }
+    label {
+      display: inline-block;
+      width: 100px;
+      font-weight: bold;
+    }
+    input[type="number"],
+    input[type="email"],
+    input[type="text"] {
+      width: 200px;
+      padding: 5px;
+      margin-right: 10px;
+    }
+    #price {
+      font-size: 2em;
+      text-align: center;
+      margin: 20px 0;
+    }
+    #log {
+      border: 1px solid #ccc;
+      padding: 10px;
+      height: 200px;
+      overflow-y: auto;
+      background: #f9f9f9;
+      font-size: 0.9em;
+    }
+    .log-entry {
+      margin-bottom: 5px;
+    }
+    .max {
+      color: green;
+      font-weight: bold;
+    }
+    .min {
+      color: red;
+      font-weight: bold;
+    }
+    .buttons {
+      margin-top: 10px;
+      text-align: center;
+    }
+    .buttons button {
+      margin: 5px;
+      padding: 10px 15px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    .email-settings {
+      margin-top: 10px;
+      text-align: center;
+    }
+    .email-settings input[type="checkbox"] {
+      margin-right: 5px;
+    }
+    /* Stili per il grafico */
+    #chartContainer {
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Monitor Prezzo BTCUSDT</h1>
+    
+    <!-- Campi di inserimento con valori preimpostati -->
+    <div class="input-group">
+      <label for="sogliaMax">Soglia Max:</label>
+      <input type="number" id="sogliaMax" value="100000" step="0.01"> USDT
+    </div>
+    <div class="input-group">
+      <label for="sogliaMin">Soglia Min:</label>
+      <input type="number" id="sogliaMin" value="99500" step="0.01"> USDT
+    </div>
+    <div class="input-group">
+      <label for="email">Email:</label>
+      <input type="email" id="email" value="cicciopante@gmail.com">
+    </div>
+    
+    <!-- Visualizzazione del prezzo corrente -->
+    <div id="price">Prezzo: -</div>
+    
+    <!-- Grafico dell'andamento -->
+    <div id="chartContainer">
+      <canvas id="chart" height="100"></canvas>
+    </div>
+    
+    <!-- Log degli eventi -->
+    <div id="log"></div>
+    
+    <!-- Pulsanti di azione con icone Unicode -->
+    <div class="buttons">
+      <button id="resetBtn" title="Reset Log">♻️ Reset</button>
+      <button id="copyBtn" title="Copia Log">📋 Copia</button>
+      <button id="saveBtn" title="Salva Log">💾 Salva</button>
+      <button id="emailBtn" title="Invia Log via Email">✉️ Email</button>
+    </div>
+    
+    <!-- Impostazioni email -->
+    <div class="email-settings">
+      <input type="checkbox" id="emailEnabled" checked>
+      <label for="emailEnabled">Invia email automaticamente al superamento della soglia</label>
+    </div>
+  </div>
+  
+  <!-- Includo SMTPJS per l'invio delle email -->
+  <script src="https://smtpjs.com/v3/smtp.js"></script>
+  
+  <script>
+    /* Plugin per impostare lo sfondo del grafico in grigio */
+    Chart.register({
+      id: 'customCanvasBackgroundColor',
+      beforeDraw: (chart) => {
+        const ctx = chart.canvas.getContext('2d');
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-over';
+        ctx.fillStyle = '#e0e0e0'; // Colore grigio per lo sfondo
+        ctx.fillRect(0, 0, chart.width, chart.height);
+        ctx.restore();
+      }
+    });
+    
+    // Configurazione del grafico con Chart.js
+    const chartCtx = document.getElementById('chart').getContext('2d');
+    let chartData = {
+      labels: [],
+      datasets: [{
+        label: 'BTCUSDT',
+        data: [],
+        fill: false,
+        // Il colore iniziale è arancione
+        borderColor: 'orange',
+        borderWidth: 2,
+        tension: 0.1
+      }]
+    };
+    
+    const chartConfig = {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        plugins: {
+          legend: {
+            labels: {
+              color: '#666'  // Colore delle didascalie
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              tooltipFormat: 'YYYY/MM/DD HH:mm:ss',
+              displayFormats: {
+                millisecond: 'HH:mm:ss',
+                second: 'HH:mm:ss',
+                minute: 'HH:mm:ss',
+                hour: 'HH:mm'
+              }
+            },
+            title: {
+              display: true,
+              text: 'Orario',
+              color: '#666'
+            },
+            ticks: {
+              color: '#666'
+            }
+          },
+          y: {
+            title: {
+              display: true,
+              text: 'Prezzo (USDT)',
+              color: '#666'
+            },
+            ticks: {
+              color: '#666'
+            }
+          }
+        }
+      }
+    };
+    const priceChart = new Chart(chartCtx, chartConfig);
+    
+    // Variabili globali per il log e gli alert
+    let lastAlert = null; // "max", "min" oppure null
+    const logContainer = document.getElementById('log');
+    const priceDisplay = document.getElementById('price');
+    const sogliaMaxInput = document.getElementById('sogliaMax');
+    const sogliaMinInput = document.getElementById('sogliaMin');
+    const emailInput = document.getElementById('email');
+    const emailEnabledCheckbox = document.getElementById('emailEnabled');
+    
+    // Funzione per formattare la data in YYYY/MM/DD HH:mm:ss
+    function getFormattedDate() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      const hours = String(now.getHours()).padStart(2, '0');
+      const minutes = String(now.getMinutes()).padStart(2, '0');
+      const seconds = String(now.getSeconds()).padStart(2, '0');
+      return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+    }
+    
+    // Funzione per aggiungere una voce al log (inserita in cima)
+    function addLogEntry(type, soglia) {
+      const time = getFormattedDate();
+      const entry = document.createElement('div');
+      entry.classList.add('log-entry');
+      if (type === 'max') {
+        entry.innerHTML = `${time} • <span class="max">Superata Soglia Max (${soglia} USDT)</span> 🔝`;
+      } else if (type === 'min') {
+        entry.innerHTML = `${time} • <span class="min">Superata Soglia Min (${soglia} USDT)</span> 🔻`;
+      }
+      logContainer.insertBefore(entry, logContainer.firstChild);
+    }
+    
+    // Funzione per il flash della pagina
+    function flashPage(color) {
+      const original = document.body.style.backgroundColor;
+      document.body.style.backgroundColor = color;
+      setTimeout(() => {
+        document.body.style.backgroundColor = original;
+      }, 2000);
+    }
+    
+    // Funzione per inviare l'email tramite SMTPJS
+    function sendEmail(subject, bodyContent) {
+      const recipient = emailInput.value;
+      Email.send({
+        SecureToken: "YOUR_SECURE_TOKEN",
+        To: recipient,
+        From: "noreply@yourdomain.com",
+        Subject: subject,
+        Body: bodyContent
+      }).then(
+        message => console.log("Email inviata: " + message)
+      );
+    }
+    
+    // Gestione dei pulsanti
+    document.getElementById('resetBtn').addEventListener('click', () => {
+      logContainer.innerHTML = "";
+    });
+    
+    document.getElementById('copyBtn').addEventListener('click', () => {
+      let logText = "";
+      logContainer.querySelectorAll('.log-entry').forEach(entry => {
+        logText += entry.textContent + "\n";
+      });
+      navigator.clipboard.writeText(logText).then(() => {
+        alert("Log copiato negli appunti!");
+      });
+    });
+    
+    document.getElementById('saveBtn').addEventListener('click', () => {
+      let logText = "";
+      logContainer.querySelectorAll('.log-entry').forEach(entry => {
+        logText += entry.textContent + "\n";
+      });
+      const blob = new Blob([logText], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'log.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+    
+    document.getElementById('emailBtn').addEventListener('click', () => {
+      let logText = "";
+      logContainer.querySelectorAll('.log-entry').forEach(entry => {
+        logText += entry.textContent + "\n";
+      });
+      sendEmail("Log BTCUSDT", logText);
+    });
+    
+    // Connessione al WebSocket di Binance per BTCUSDT
+    const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@ticker");
+    
+    ws.onopen = () => {
+      console.log("Connessione WebSocket aperta.");
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const currentPrice = parseFloat(data.c);
+        priceDisplay.textContent = "Prezzo: " + currentPrice + " USDT";
+        
+        // Aggiorno il grafico con il nuovo dato
+        const now = new Date();
+        chartData.labels.push(now);
+        chartData.datasets[0].data.push(currentPrice);
+        if (chartData.labels.length > 50) {
+          chartData.labels.shift();
+          chartData.datasets[0].data.shift();
+        }
+        
+        // Aggiorno il colore della linea in base alle soglie:
+        const sogliaMax = parseFloat(sogliaMaxInput.value);
+        const sogliaMin = parseFloat(sogliaMinInput.value);
+        if (currentPrice >= sogliaMax) {
+          chartData.datasets[0].borderColor = 'green';
+          if (lastAlert !== 'max') {
+            flashPage("lightgreen");
+            addLogEntry('max', sogliaMax);
+            if (emailEnabledCheckbox.checked) {
+              sendEmail(`Superata Soglia Max (${sogliaMax} USDT)`, `Il prezzo di BTCUSDT ha raggiunto ${currentPrice} USDT alle ${getFormattedDate()}.`);
+            }
+            lastAlert = 'max';
+          }
+        } else if (currentPrice <= sogliaMin) {
+          chartData.datasets[0].borderColor = 'red';
+          if (lastAlert !== 'min') {
+            flashPage("lightcoral");
+            addLogEntry('min', sogliaMin);
+            if (emailEnabledCheckbox.checked) {
+              sendEmail(`Superata Soglia Min (${sogliaMin} USDT)`, `Il prezzo di BTCUSDT ha raggiunto ${currentPrice} USDT alle ${getFormattedDate()}.`);
+            }
+            lastAlert = 'min';
+          }
+        } else {
+          // Se il prezzo è nella norma, il colore della linea è arancione
+          chartData.datasets[0].borderColor = 'orange';
+          lastAlert = null;
+        }
+        
+        priceChart.update();
+      } catch (err) {
+        console.error("Errore nell'elaborazione del messaggio WebSocket:", err);
+      }
+    };
+    
+    ws.onerror = (error) => {
+      console.error("Errore nel WebSocket:", error);
+    };
+    
+    ws.onclose = () => {
+      console.warn("Connessione WebSocket chiusa.");
+    };
+  </script>
+</body>
+</html>
