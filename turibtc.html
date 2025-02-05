@@ -1,0 +1,436 @@
+﻿<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <title>Combined App - Turillo & Monitor Prezzo BTCUSDT</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background-color: #1a1a1a;
+      color: #fff;
+      font-family: "Segoe UI", sans-serif;
+      font-size: 60%;
+      margin: 0;
+      padding: 20px;
+    }
+    .main-wrapper { max-width: 1400px; margin: 0 auto; }
+    h1, h2 { margin: 0 0 10px; padding: 0; }
+    h1 { font-size: 1.5em; text-align: center; margin-bottom: 30px; }
+    .flex-container { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .half { flex: 1; min-width: 150px; }
+    .col, #monitor-container {
+      flex: 1; min-width: 300px;
+      background-color: #121212;
+      padding: 20px; border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+    label { display: block; margin-top: 10px; font-weight: bold; }
+    input, textarea, button {
+      width: 100%; padding: 8px; margin-top: 5px;
+      background-color: #404040; border: none; border-radius: 5px;
+      color: #fff; font-family: inherit; font-size: inherit;
+    }
+    input:focus, textarea:focus { outline: none; box-shadow: 0 0 5px #606060; }
+    button { cursor: pointer; transition: background-color 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    button:hover { background-color: #606060; }
+    textarea { resize: vertical; min-height: 160px; }
+    #increment_output_text { min-height: 2em; max-height: 2em; }
+    #weekly_text { min-height: 112px; }
+    .output-group { margin-top: 20px; }
+    .output-group h3 { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+    .output-controls { display: flex; gap: 5px; }
+    .output-controls button { display: flex; align-items: center; font-size: 0.7em; padding: 4px 8px; }
+    #monitor-container .email-row {
+      display: flex; align-items: center; gap: 10px; margin-top: 10px;
+    }
+    #monitor-container .email-row label,
+    #monitor-container .email-row input {
+      width: auto; margin: 0; padding: 5px;
+      background-color: #1e1e1e; border: 1px solid #333; border-radius: 5px;
+    }
+    #monitor-container .input-group {
+      margin-bottom: 10px; display: flex; align-items: center;
+    }
+    #monitor-container .input-group label { width: auto; margin-right: 5px; }
+    #monitor-container input[type="number"],
+    #monitor-container input[type="email"],
+    #monitor-container input[type="text"] {
+      width: auto; padding: 5px; margin-right: 10px;
+      background-color: #1e1e1e; border: 1px solid #333; border-radius: 5px;
+    }
+    #price { font-size: 1.5em; text-align: center; margin: 20px 0; }
+    #log {
+      border: 1px solid #333; padding: 10px; height: 200px;
+      overflow-y: auto; background: #1e1e1e; font-size: 0.8em;
+      border-radius: 5px; margin-top: 4px;
+    }
+    .log-entry { margin-bottom: 5px; }
+    .max { color: green; font-weight: bold; }
+    .min { color: red; font-weight: bold; }
+    .control-buttons {
+      display: flex; gap: 10px; margin-top: 26px;
+    }
+    .control-buttons button {
+      padding: 5px 10px; font-size: 0.8em;
+      background-color: #333; border: 1px solid #444; border-radius: 5px; flex: 1;
+    }
+    .control-buttons button:hover { background-color: #444; }
+    #chartContainer { margin-top: 10px; }
+    #chart { width: 100% !important; height: 250px !important; border-radius: 10px; }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" 
+        integrity="sha512-Fo3rlrZj/k7ujTnHg4C+6ZLid5E6/Tx9Jg5h3uP7STiW0XJ4V57o+OcHAPw3aTtsoM9ns61Ec+GCO2VJxYh0jQ==" 
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.1/moment.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.0"></script>
+</head>
+<body>
+  <div class="main-wrapper">
+    <div class="flex-container">
+      <div class="col">
+        <h1>Turillo • Binance Data Retriever</h1>
+        <label for="giorno">Giorno:</label>
+        <input type="date" id="giorno">
+        <label for="coppia">Coppia:</label>
+        <input type="text" id="coppia" placeholder="BTCUSDT">
+        <div class="row">
+          <div class="half">
+            <label for="incremento">Incremento %:</label>
+            <input type="text" id="incremento" placeholder="Inserisci percentuale">
+          </div>
+          <div class="half">
+            <label for="settimane">Settimane:</label>
+            <input type="number" id="settimane" min="0" placeholder="Numero settimane">
+          </div>
+        </div>
+        <button id="ottieniBtn"><span class="icon">🔍</span> <span class="text">Ottieni</span></button>
+        <div class="flex-container">
+          <div class="col">
+            <div class="output-group">
+              <h3>
+                Dati del giorno richiesto:
+                <span class="output-controls">
+                  <button onclick="copyContent('result_text')" title="Copia">📋 <span>Copia</span></button>
+                  <button onclick="saveToFile('result_text', 'dati_giorno.txt')" title="Salva">💾 <span>Salva</span></button>
+                </span>
+              </h3>
+              <textarea id="result_text" readonly></textarea>
+            </div>
+            <div class="output-group">
+              <h3>
+                Settimana Precedente Aggregata:
+                <span class="output-controls">
+                  <button onclick="copyContent('weekly_text')" title="Copia">📋 <span>Copia</span></button>
+                  <button onclick="saveToFile('weekly_text', 'settimana_precedente.txt')" title="Salva">💾 <span>Salva</span></button>
+                </span>
+              </h3>
+              <textarea id="weekly_text" readonly></textarea>
+            </div>
+          </div>
+          <div class="col">
+            <div class="output-group">
+              <h3>
+                7 Giorni Precedenti:
+                <span class="output-controls">
+                  <button onclick="copyContent('historical_text')" title="Copia">📋 <span>Copia</span></button>
+                  <button onclick="saveToFile('historical_text', '7_giorni_precedenti.txt')" title="Salva">💾 <span>Salva</span></button>
+                </span>
+              </h3>
+              <textarea id="historical_text" readonly></textarea>
+            </div>
+            <div class="output-group">
+              <h3>
+                Incremento %:
+                <span class="output-controls">
+                  <button onclick="copyContent('increment_output_text')" title="Copia">📋 <span>Copia</span></button>
+                  <button onclick="saveToFile('increment_output_text', 'incremento.txt')" title="Salva">💾 <span>Salva</span></button>
+                </span>
+              </h3>
+              <textarea id="increment_output_text" readonly></textarea>
+            </div>
+            <div class="output-group">
+              <h3>
+                Settimane:
+                <span class="output-controls">
+                  <button onclick="copyContent('weeks_output_text')" title="Copia">📋 <span>Copia</span></button>
+                  <button onclick="saveToFile('weeks_output_text', 'settimane.txt')" title="Salva">💾 <span>Salva</span></button>
+                </span>
+              </h3>
+              <textarea id="weeks_output_text" readonly></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="monitor-container">
+        <h1>Benance BTCUSDT price</h1>
+        <div class="row">
+          <div class="half">
+            <div class="input-group">
+              <label for="sogliaMin">Soglia Min:</label>
+              <input type="number" id="sogliaMin" value="99500" step="0.01"> USDT
+            </div>
+          </div>
+          <div class="half">
+            <div class="input-group">
+              <label for="sogliaMax">Soglia Max:</label>
+              <input type="number" id="sogliaMax" value="100000" step="0.01"> USDT
+            </div>
+          </div>
+        </div>
+        <div class="row email-row">
+          <input type="checkbox" id="emailEnabled">
+          <label for="emailEnabled">Invia email ad ogni superamento della soglia</label>
+          <label for="email">Mail to:</label>
+          <input type="email" id="email" value="cicciopante@gmail.com">
+        </div>
+        <div id="price">BTCUSDT: -</div>
+        <div id="chartContainer">
+          <canvas id="chart"></canvas>
+        </div>
+        <div class="control-buttons">
+          <button id="resetBtn">♻️ Reset</button>
+          <button id="copyBtn">📋 Copia</button>
+          <button id="saveBtn">💾 Salva</button>
+          <button id="emailBtn">✉️ Email</button>
+        </div>
+        <div id="log"></div>
+      </div>
+    </div>
+  </div>
+  <script>
+    let global_low_val = null;
+    function formatNumber(value) {
+      const num = Number(value);
+      return isNaN(num) ? value : num.toLocaleString("it-IT", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function disableAll() {
+      ['result_text', 'historical_text', 'weekly_text', 'increment_output_text', 'weeks_output_text']
+        .forEach(id => document.getElementById(id).disabled = true);
+    }
+    async function ottieniClick() {
+      global_low_val = null;
+      ['result_text', 'historical_text', 'weekly_text', 'increment_output_text', 'weeks_output_text']
+        .forEach(id => { const el = document.getElementById(id); el.disabled = false; el.value = ""; });
+      const giorno = document.getElementById('giorno').value;
+      const coppia = document.getElementById('coppia').value.trim().toUpperCase();
+      const incremento = document.getElementById('incremento').value.replace(",", ".").trim();
+      const settimane = document.getElementById('settimane').value.trim();
+      const dateObj = new Date(giorno + "T00:00:00Z");
+      if (isNaN(dateObj.getTime())) {
+        document.getElementById('result_text').value = "Formato data non valido. Usa AAAA-MM-GG.";
+        disableAll();
+        return;
+      }
+      await Promise.all([
+        fetchCurrentDay(coppia, dateObj.getTime()),
+        fetchLast7Days(coppia, dateObj),
+        fetchPreviousWeek(coppia, dateObj)
+      ]);
+      updateIncrementOutput(incremento);
+      updateWeeksOutput(incremento, settimane);
+      disableAll();
+    }
+    async function fetchCurrentDay(symbol, start_time) {
+      const resultText = document.getElementById('result_text');
+      try {
+        const url = new URL("https://api.binance.com/api/v3/klines");
+        url.search = new URLSearchParams({ symbol, interval: "1d", startTime: start_time, limit: 1 });
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        const data = await res.json();
+        if (!data.length) return resultText.value = "Nessun dato disponibile per questa data";
+        const [ , open, high, low, close ] = data[0];
+        const delta = (Number(low) !== 0) ? ((Number(high) - Number(low)) / Number(low) * 100) : 0;
+        global_low_val = Number(low);
+        resultText.value = `LOW: ${formatNumber(low)}\nHIGH: ${formatNumber(high)}\n\nDELTA LOW-HIGH: ${delta.toFixed(2)}%\n\nOPEN: ${formatNumber(open)}\nCLOSE: ${formatNumber(close)}\n`;
+      } catch (e) { resultText.value = "Errore: " + e.message; }
+    }
+    async function fetchLast7Days(symbol, dateObj) {
+      const historicalText = document.getElementById('historical_text');
+      try {
+        const start = new Date(dateObj.getTime() - 7 * 24 * 60 * 60 * 1000).getTime();
+        const url = new URL("https://api.binance.com/api/v3/klines");
+        url.search = new URLSearchParams({ symbol, interval: "1d", startTime: start, limit: 7 });
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        const data = await res.json();
+        data.forEach(k => {
+          const day = new Date(Number(k[0])).toISOString().split("T")[0];
+          const delta = (Number(k[3]) !== 0) ? ((Number(k[2]) - Number(k[3])) / Number(k[3]) * 100) : 0;
+          historicalText.value += `${day}\nLOW: ${formatNumber(k[3])}  HIGH: ${formatNumber(k[2])}\nOPEN: ${formatNumber(k[1])}  CLOSE: ${formatNumber(k[4])}\nDELTA: ${delta.toFixed(2)}%\n\n`;
+        });
+      } catch (e) { historicalText.value = "Errore storico: " + e.message; }
+    }
+    async function fetchPreviousWeek(symbol, dateObj) {
+      const weeklyText = document.getElementById('weekly_text');
+      try {
+        const weekday = (dateObj.getUTCDay() + 6) % 7;
+        const currentMonday = new Date(dateObj.getTime() - weekday * 24 * 60 * 60 * 1000);
+        const prevStart = new Date(currentMonday.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const prevEnd = new Date(prevStart.getTime() + 6 * 24 * 60 * 60 * 1000);
+        const url = new URL("https://api.binance.com/api/v3/klines");
+        url.search = new URLSearchParams({
+          symbol,
+          interval: "1d",
+          startTime: prevStart.getTime(),
+          endTime: prevEnd.getTime() + 24 * 60 * 60 * 1000,
+          limit: 7
+        });
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        const data = await res.json();
+        if (data.length) {
+          const lows = data.map(k => Number(k[3]));
+          const highs = data.map(k => Number(k[2]));
+          const opens = data.map(k => Number(k[1]));
+          const closes = data.map(k => Number(k[4]));
+          const minLow = Math.min(...lows);
+          const maxHigh = Math.max(...highs);
+          const delta = (minLow !== 0) ? ((maxHigh - minLow) / minLow * 100) : 0;
+          weeklyText.value = `Periodo: ${prevStart.toISOString().split("T")[0]} / ${prevEnd.toISOString().split("T")[0]}\nLOW SETTIMANALE: ${formatNumber(minLow)}\nHIGH SETTIMANALE: ${formatNumber(maxHigh)}\nOPEN: ${formatNumber(opens[0])}\nCLOSE: ${formatNumber(closes[closes.length - 1])}\nDELTA: ${delta.toFixed(2)}%`;
+        }
+      } catch (e) { weeklyText.value = "Errore settimana: " + e.message; }
+    }
+    function updateIncrementOutput(incStr) {
+      const out = document.getElementById('increment_output_text');
+      let inc = parseFloat(incStr);
+      if (isNaN(inc)) inc = 0;
+      out.value = global_low_val === null ? "N/A" : formatNumber(global_low_val * (1 + inc/100));
+    }
+    function updateWeeksOutput(incStr, weeksStr) {
+      const out = document.getElementById('weeks_output_text');
+      let weeks = parseInt(weeksStr) || 0, inc = parseFloat(incStr) || 0;
+      out.value = "";
+      if (global_low_val === null || weeks <= 0) { out.value = "N/A"; return; }
+      const base = global_low_val * (1 + inc/100);
+      for (let i = 1; i <= weeks; i++) {
+        out.value += `Dopo ${i} settimana(e): ${formatNumber(base * Math.pow((1 + inc/100), i))}\n`;
+      }
+    }
+    function copyContent(id) {
+      const el = document.getElementById(id);
+      if (!el.value) return;
+      navigator.clipboard.writeText(el.value)
+        .then(() => { const orig = el.style.backgroundColor || "#404040"; el.style.backgroundColor = "#007700"; setTimeout(() => el.style.backgroundColor = orig, 1000); })
+        .catch(err => console.error("Errore durante la copia:", err));
+    }
+    function saveToFile(id, filename) {
+      const text = document.getElementById(id).value;
+      if (!text) return;
+      const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+    document.getElementById('ottieniBtn').addEventListener('click', ottieniClick);
+    document.querySelectorAll("input").forEach(input => {
+      input.addEventListener("keydown", e => { if(e.key === "Enter") ottieniClick(); });
+    });
+    window.addEventListener('load', () => {
+      const ieri = new Date(Date.now() - 24*60*60*1000);
+      document.getElementById('giorno').value = ieri.toISOString().split("T")[0];
+      document.getElementById('coppia').value = "BTCUSDT";
+    });
+    Chart.register({
+      id: 'customCanvasBackgroundColor',
+      beforeDraw: chart => {
+        const ctx = chart.canvas.getContext('2d');
+        ctx.save();
+        ctx.globalCompositeOperation = 'destination-over';
+        ctx.fillStyle = '#1e1e1e';
+        ctx.fillRect(0, 0, chart.width, chart.height);
+        ctx.restore();
+      }
+    });
+    const chartCtx = document.getElementById('chart').getContext('2d');
+    const chartData = { labels: [], datasets: [{ label: 'BTCUSDT', data: [], fill: false, borderColor: 'orange', borderWidth: 2, tension: 0.1 }] };
+    const chartConfig = {
+      type: 'line',
+      data: chartData,
+      options: {
+        responsive: true,
+        plugins: { legend: { labels: { color: '#e0e0e0', font: { size: 10 } } } },
+        scales: {
+          x: { type: 'time', time: { tooltipFormat: 'YYYY/MM/DD HH:mm:ss', displayFormats: { millisecond: 'HH:mm:ss', second: 'HH:mm:ss', minute: 'HH:mm:ss', hour: 'HH:mm' } }, title: { display: true, text: 'Orario', color: '#e0e0e0', font: { size: 10 } }, ticks: { color: '#e0e0e0', font: { size: 10 } } },
+          y: { title: { display: true, text: 'Prezzo (USDT)', color: '#e0e0e0', font: { size: 10 } }, ticks: { color: '#e0e0e0', font: { size: 10 } } }
+        }
+      }
+    };
+    const priceChart = new Chart(chartCtx, chartConfig);
+    const logContainer = document.getElementById('log');
+    const priceDisplay = document.getElementById('price');
+    function getFormattedDate() {
+      return new Date().toISOString().replace('T', ' ').slice(0, 19);
+    }
+    function addLogEntry(type, soglia) {
+      const entry = document.createElement('div');
+      entry.className = "log-entry";
+      const time = getFormattedDate();
+      entry.innerHTML = type === 'max' 
+        ? `${time} • <span class="max">Superata Soglia Max (${soglia} USDT)</span> 🔝`
+        : `${time} • <span class="min">Superata Soglia Min (${soglia} USDT)</span> 🔻`;
+      logContainer.insertBefore(entry, logContainer.firstChild);
+    }
+    const ws = new WebSocket("wss://stream.binance.com:9443/ws/btcusdt@ticker");
+    ws.onmessage = event => {
+      try {
+        const data = JSON.parse(event.data);
+        const currentPrice = parseFloat(data.c);
+        priceDisplay.textContent = "BTCUSDT: " + currentPrice.toLocaleString('it-IT');
+        chartData.labels.push(new Date());
+        chartData.datasets[0].data.push(currentPrice);
+        if (chartData.labels.length > 50) {
+          chartData.labels.shift();
+          chartData.datasets[0].data.shift();
+        }
+        const sogliaMax = parseFloat(document.getElementById('sogliaMax').value);
+        const sogliaMin = parseFloat(document.getElementById('sogliaMin').value);
+        if (currentPrice >= sogliaMax) {
+          chartData.datasets[0].borderColor = 'green';
+          priceDisplay.style.color = 'green';
+          addLogEntry('max', sogliaMax);
+        } else if (currentPrice <= sogliaMin) {
+          chartData.datasets[0].borderColor = 'red';
+          priceDisplay.style.color = 'red';
+          addLogEntry('min', sogliaMin);
+        } else {
+          chartData.datasets[0].borderColor = 'orange';
+          priceDisplay.style.color = '#fff';
+        }
+        priceChart.update();
+      } catch (err) { console.error("Errore WebSocket:", err); }
+    };
+    document.getElementById("resetBtn").addEventListener("click", () => logContainer.innerHTML = "");
+    document.getElementById("copyBtn").addEventListener("click", () => {
+      navigator.clipboard.writeText(logContainer.innerText)
+        .then(() => { const orig = logContainer.style.backgroundColor; logContainer.style.backgroundColor = "#007700"; setTimeout(() => logContainer.style.backgroundColor = orig, 1000); })
+        .catch(err => console.error("Errore nel copiare il log:", err));
+    });
+    document.getElementById("saveBtn").addEventListener("click", () => {
+      const blob = new Blob([logContainer.innerText], { type: "text/plain;charset=utf-8" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "log.txt";
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+    document.getElementById("emailBtn").addEventListener("click", () => {
+      const recipient = document.getElementById('email').value;
+      Email.send({
+        SecureToken: "YOUR_SECURE_TOKEN", 
+        To: recipient,
+        From: "your-email@example.com",
+        Subject: "Log BTCUSDT",
+        Body: logContainer.innerText
+      })
+      .then(message => alert("Email inviata: " + message))
+      .catch(error => alert("Errore nell'invio dell'email: " + error));
+    });
+  </script>
+  <script src="https://smtpjs.com/v3/smtp.js"></script>
+</body>
+</html>
