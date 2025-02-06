@@ -1,0 +1,276 @@
+﻿<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calcolo Percentuale</title>
+  <style>
+    /* Stile dark per tutta la pagina */
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 1em;
+    }
+    h1 {
+      text-align: center;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      margin: 0.5em 0;
+    }
+    .label {
+      flex: 0 0 120px;
+      padding-right: 0.5em;
+    }
+    .input-container {
+      flex: 1;
+      position: relative;
+    }
+    input {
+      width: 100%;
+      padding: 0.5em 3em 0.5em 0.5em;
+      background-color: #222;
+      border: 1px solid #444;
+      color: #fff;
+      border-radius: 4px;
+      font-size: 1em;
+    }
+    .btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.2em;
+      padding: 0 0.3em;
+      cursor: pointer;
+    }
+    /* posiziona il bottone "cancella" a destra, e il "copia" subito dopo */
+    .clear-btn {
+      right: 2em;
+    }
+    .copy-btn {
+      right: 0.2em;
+    }
+    /* effetto lampeggio */
+    .blink {
+      animation: blink-animation 1s ease;
+    }
+    @keyframes blink-animation {
+      0%   { background-color: #444; }
+      50%  { background-color: #666; }
+      100% { background-color: #444; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Calcolo Percentuale</h1>
+  <!-- SCHEMA: a sinistra le etichette, a destra i campi con i pulsanti -->
+  <div class="row">
+    <div class="label">Valore iniziale</div>
+    <div class="input-container">
+      <input type="number" id="A" placeholder=""/>
+      <button class="btn clear-btn" data-target="A" title="Cancella">&#x274C;</button>
+      <button class="btn copy-btn" data-target="A" title="Copia">&#x1F4CB;</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="label">Tasso %</div>
+    <div class="input-container">
+      <input type="number" id="r" placeholder=""/>
+      <button class="btn clear-btn" data-target="r" title="Cancella">&#x274C;</button>
+      <button class="btn copy-btn" data-target="r" title="Copia">&#x1F4CB;</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="label">Valore %</div>
+    <div class="input-container">
+      <input type="number" id="P" placeholder=""/>
+      <button class="btn clear-btn" data-target="P" title="Cancella">&#x274C;</button>
+      <button class="btn copy-btn" data-target="P" title="Copia">&#x1F4CB;</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="label">Valore + b%</div>
+    <div class="input-container">
+      <input type="number" id="A_plus" placeholder=""/>
+      <button class="btn clear-btn" data-target="A_plus" title="Cancella">&#x274C;</button>
+      <button class="btn copy-btn" data-target="A_plus" title="Copia">&#x1F4CB;</button>
+    </div>
+  </div>
+  <div class="row">
+    <div class="label">Valore - b%</div>
+    <div class="input-container">
+      <input type="number" id="A_minus" placeholder=""/>
+      <button class="btn clear-btn" data-target="A_minus" title="Cancella">&#x274C;</button>
+      <button class="btn copy-btn" data-target="A_minus" title="Copia">&#x1F4CB;</button>
+    </div>
+  </div>
+
+  <script>
+    // Flag per evitare ricorsioni durante l'aggiornamento dei campi
+    let updating = false;
+
+    // Lista degli ID dei campi
+    const fieldIds = ["A", "r", "P", "A_plus", "A_minus"];
+
+    // Aggiunge gli event listener agli input
+    fieldIds.forEach(id => {
+      document.getElementById(id).addEventListener("input", recalc);
+    });
+
+    // Event listener per i pulsanti cancella e copia
+    document.querySelectorAll(".clear-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.getAttribute("data-target");
+        const input = document.getElementById(targetId);
+        input.value = "";
+        input.focus();
+        recalc();
+      });
+    });
+
+    document.querySelectorAll(".copy-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.getAttribute("data-target");
+        const input = document.getElementById(targetId);
+        // Se il campo ha un valore, copialo
+        if (input.value !== "") {
+          navigator.clipboard.writeText(input.value).then(() => {
+            // Aggiungi l'effetto lampeggio
+            input.classList.add("blink");
+            setTimeout(() => {
+              input.classList.remove("blink");
+            }, 1000);
+          }).catch(err => {
+            console.error("Errore nella copia: ", err);
+          });
+        }
+      });
+    });
+
+    // Funzione che raccoglie i valori immessi e, se esattamente 2 campi sono compilati, calcola gli altri
+    function recalc() {
+      if (updating) return;
+      updating = true;
+      
+      // Raccogli i valori (convertendo in numero se non vuoto)
+      const inputs = {};
+      let count = 0;
+      fieldIds.forEach(id => {
+        const val = document.getElementById(id).value.trim();
+        if (val !== "") {
+          const num = parseFloat(val);
+          if (!isNaN(num)) {
+            inputs[id] = num;
+            count++;
+          }
+        }
+      });
+
+      // Se esattamente 2 campi sono compilati, prova a risolvere
+      if (count === 2) {
+        const result = computeFrom(inputs);
+        if (result) {
+          // Aggiorna tutti i campi con i valori calcolati
+          // Formattiamo con al massimo 2 decimali (rimuovendo eventuali zeri finali)
+          fieldIds.forEach(id => {
+            const field = document.getElementById(id);
+            field.value = parseFloat(result[id]).toFixed(2);
+          });
+        }
+      }
+      updating = false;
+    }
+
+    // Funzione che, dato un oggetto con 2 proprietà (tra A, r, P, A_plus, A_minus),
+    // risolve il sistema:
+    //    P = A * r / 100
+    //    A_plus = A + P
+    //    A_minus = A - P
+    function computeFrom(inputs) {
+      let A, r, P, A_plus, A_minus;
+      // Caso 1: A e r noti
+      if (!isNaN(inputs.A) && !isNaN(inputs.r)) {
+        A = inputs.A;
+        r = inputs.r;
+        P = A * r / 100;
+      }
+      // Caso 2: A e P noti
+      else if (!isNaN(inputs.A) && !isNaN(inputs.P)) {
+        A = inputs.A;
+        P = inputs.P;
+        r = (A !== 0) ? 100 * P / A : 0;
+      }
+      // Caso 3: A e A_plus noti
+      else if (!isNaN(inputs.A) && !isNaN(inputs.A_plus)) {
+        A = inputs.A;
+        A_plus = inputs.A_plus;
+        P = A_plus - A;
+        r = (A !== 0) ? 100 * P / A : 0;
+      }
+      // Caso 4: A e A_minus noti
+      else if (!isNaN(inputs.A) && !isNaN(inputs.A_minus)) {
+        A = inputs.A;
+        A_minus = inputs.A_minus;
+        P = A - A_minus;
+        r = (A !== 0) ? 100 * P / A : 0;
+      }
+      // Caso 5: r e P noti
+      else if (!isNaN(inputs.r) && !isNaN(inputs.P)) {
+        r = inputs.r;
+        P = inputs.P;
+        A = (r !== 0) ? 100 * P / r : 0;
+      }
+      // Caso 6: r e A_plus noti
+      else if (!isNaN(inputs.r) && !isNaN(inputs.A_plus)) {
+        r = inputs.r;
+        A_plus = inputs.A_plus;
+        A = A_plus / (1 + r / 100);
+        P = A * r / 100;
+      }
+      // Caso 7: r e A_minus noti
+      else if (!isNaN(inputs.r) && !isNaN(inputs.A_minus)) {
+        r = inputs.r;
+        A_minus = inputs.A_minus;
+        A = A_minus / (1 - r / 100);
+        P = A * r / 100;
+      }
+      // Caso 8: P e A_plus noti
+      else if (!isNaN(inputs.P) && !isNaN(inputs.A_plus)) {
+        P = inputs.P;
+        A_plus = inputs.A_plus;
+        A = A_plus - P;
+        r = (A !== 0) ? 100 * P / A : 0;
+      }
+      // Caso 9: P e A_minus noti
+      else if (!isNaN(inputs.P) && !isNaN(inputs.A_minus)) {
+        P = inputs.P;
+        A_minus = inputs.A_minus;
+        A = A_minus + P;
+        r = (A !== 0) ? 100 * P / A : 0;
+      }
+      // Caso 10: A_plus e A_minus noti
+      else if (!isNaN(inputs.A_plus) && !isNaN(inputs.A_minus)) {
+        A_plus = inputs.A_plus;
+        A_minus = inputs.A_minus;
+        A = (A_plus + A_minus) / 2;
+        P = (A_plus - A_minus) / 2;
+        r = (A !== 0) ? 100 * P / A : 0;
+      }
+      else {
+        // Se non si riconosce una coppia valida
+        return null;
+      }
+      // Calcola sempre A_plus e A_minus in base ad A e P
+      A_plus = A + P;
+      A_minus = A - P;
+      return { A, r, P, A_plus, A_minus };
+    }
+  </script>
+</body>
+</html>

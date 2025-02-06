@@ -1,0 +1,147 @@
+﻿<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#000000">
+    <title>Calcolatore Valori</title>
+    <style>
+        body {
+            background-color: black;
+            color: white;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        .row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        label {
+            width: 120px;
+            text-align: right;
+            margin-right: 10px;
+        }
+        input[type="number"] {
+            width: 100px;
+            padding: 5px;
+            background-color: #333;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 5px;
+            text-align: right;
+        }
+        button {
+            background-color: transparent;
+            border: none;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            margin-left: 5px;
+        }
+        button:hover {
+            color: #00bfff;
+        }
+        .flash {
+            animation: flash 1s;
+        }
+        @keyframes flash {
+            0%, 100% { background-color: #333; }
+            50% { background-color: #00bfff; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1 style="text-align: center; color: #00bfff;">Calcolatore Valori</h1>
+    
+    <div class="row">
+        <label for="valoreIniziale">Valore iniziale</label>
+        <input type="number" id="valoreIniziale" placeholder="A" oninput="calcola()" />
+        <button onclick="svuotaCampo('valoreIniziale')">❌</button>
+        <button onclick="copiaCampo('valoreIniziale')">📋</button>
+    </div>
+
+    <div class="row">
+        <label for="tasso">Tasso %</label>
+        <input type="number" id="tasso" placeholder="B" oninput="calcola()" />
+        <button onclick="svuotaCampo('tasso')">❌</button>
+        <button onclick="copiaCampo('tasso')">📋</button>
+    </div>
+
+    <div class="row">
+        <label for="valorePercentuale">Valore %</label>
+        <input type="number" id="valorePercentuale" placeholder="C" oninput="calcola()" />
+        <button onclick="svuotaCampo('valorePercentuale')">❌</button>
+        <button onclick="copiaCampo('valorePercentuale')">📋</button>
+    </div>
+
+    <div class="row">
+        <label for="valorePiuBPercento">Valore + b%</label>
+        <input type="number" id="valorePiuBPercento" placeholder="D" oninput="calcola()" />
+        <button onclick="svuotaCampo('valorePiuBPercento')">❌</button>
+        <button onclick="copiaCampo('valorePiuBPercento')">📋</button>
+    </div>
+
+    <div class="row">
+        <label for="valoreMenoBPercento">Valore - b%</label>
+        <input type="number" id="valoreMenoBPercento" placeholder="E" oninput="calcola()" />
+        <button onclick="svuotaCampo('valoreMenoBPercento')">❌</button>
+        <button onclick="copiaCampo('valoreMenoBPercento')">📋</button>
+    </div>
+</div>
+
+<script>
+    function calcola() {
+        const A = parseFloat(document.getElementById("valoreIniziale").value);
+        const B = parseFloat(document.getElementById("tasso").value);
+        const C = parseFloat(document.getElementById("valorePercentuale").value);
+        const D = parseFloat(document.getElementById("valorePiuBPercento").value);
+        const E = parseFloat(document.getElementById("valoreMenoBPercento").value);
+
+        if (!isNaN(A) && !isNaN(B)) {
+            document.getElementById("valorePercentuale").value = (A * B / 100).toFixed(2);
+            document.getElementById("valorePiuBPercento").value = (A * (1 + B / 100)).toFixed(2);
+            document.getElementById("valoreMenoBPercento").value = (A * (1 - B / 100)).toFixed(2);
+        } else if (!isNaN(A) && !isNaN(C)) {
+            document.getElementById("tasso").value = (C * 100 / A).toFixed(2);
+            document.getElementById("valorePiuBPercento").value = (A + C).toFixed(2);
+            document.getElementById("valoreMenoBPercento").value = (A - C).toFixed(2);
+        } else if (!isNaN(D) && !isNaN(E)) {
+            document.getElementById("valoreIniziale").value = ((D + E) / 2).toFixed(2);
+            document.getElementById("tasso").value = (((D - E) / (D + E)) * 200).toFixed(2);
+            document.getElementById("valorePercentuale").value = ((D - E) / 2).toFixed(2);
+        } else if (!isNaN(A) && !isNaN(D)) {
+            document.getElementById("tasso").value = (((D / A) - 1) * 100).toFixed(2);
+            document.getElementById("valorePercentuale").value = (A * (((D / A) - 1))).toFixed(2);
+            document.getElementById("valoreMenoBPercento").value = (A * (1 - ((D / A) - 1))).toFixed(2);
+        } else if (!isNaN(A) && !isNaN(E)) {
+            document.getElementById("tasso").value = (((A / E) - 1) * 100).toFixed(2);
+            document.getElementById("valorePercentuale").value = (A * (1 - (E / A))).toFixed(2);
+            document.getElementById("valorePiuBPercento").value = (A * (1 + ((A / E) - 1))).toFixed(2);
+        }
+    }
+
+    function svuotaCampo(id) {
+        const campo = document.getElementById(id);
+        campo.value = '';
+        campo.focus();
+    }
+
+    function copiaCampo(id) {
+        const campo = document.getElementById(id);
+        if (campo.value) {
+            navigator.clipboard.writeText(campo.value);
+            campo.classList.add('flash');
+            setTimeout(() => campo.classList.remove('flash'), 1000);
+        }
+    }
+</script>
+
+</body>
+</html>
