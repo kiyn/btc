@@ -37,8 +37,9 @@
       display: flex;
       align-items: center;
     }
+    /* Riduzione della larghezza del campo di input del 20% */
     input {
-      flex: 1;
+      width: 80%;
       padding: 0.5em;
       background-color: #222;
       border: 1px solid #444;
@@ -59,6 +60,12 @@
     }
     button:focus {
       outline: none;
+    }
+    /* Pulsante "Cancella Tutto" centrato in basso */
+    #clearAllBtn {
+      font-size: 1.4em;
+      padding: 0.5em 1em;
+      margin-top: 1em;
     }
     /* Effetto blink: il campo lampeggia per 0.5 secondi dopo copia */
     .blink {
@@ -120,12 +127,23 @@
         <button class="copy" data-target="finalMinus">&#x1F4CB;</button>
       </div>
     </div>
+    <!-- Riga per il tasto "Cancella Tutto" -->
+    <div class="row">
+      <div style="width: 100%; text-align: center;">
+        <button id="clearAllBtn" title="Cancella tutti i campi">&#x274C;</button>
+      </div>
+    </div>
   </div>
 
   <script>
     /******************
      * Logica JavaScript
      ******************/
+    // Funzione di arrotondamento a due cifre decimali
+    function round2(value) {
+      return Number(value.toFixed(2));
+    }
+
     // Flag per evitare cicli durante l'aggiornamento
     let isUpdating = false;
     // Memorizziamo l'ultimo aggiornamento (timestamp) per ciascun campo opzionale
@@ -215,18 +233,17 @@
       if (source === "tasso") {
         // Caso 1: Valore iniziale + Tasso
         computedT = tassoVal;
-        computedValPerc = iniziale * computedT / 100;
-        computedFinalPlus = iniziale + computedValPerc;
-        computedFinalMinus = iniziale - computedValPerc;
-        // Aggiorniamo i campi calcolati
+        computedValPerc = round2(iniziale * computedT / 100);
+        computedFinalPlus = round2(iniziale + computedValPerc);
+        computedFinalMinus = round2(iniziale - computedValPerc);
         valorePercInput.value = computedValPerc;
         finalPlusInput.value = computedFinalPlus;
         finalMinusInput.value = computedFinalMinus;
       } else if (source === "finalPlus") {
         // Caso 2: Valore iniziale + Valore Finale + Tasso
         computedT = ((finalPlusVal - iniziale) / iniziale) * 100;
-        computedValPerc = iniziale * computedT / 100;
-        // Aggiorniamo Tasso e Valore %
+        computedT = round2(computedT);
+        computedValPerc = round2(iniziale * computedT / 100);
         tassoInput.value = computedT;
         valorePercInput.value = computedValPerc;
         // Manteniamo "Finale + Tasso" e puliamo "Finale - Tasso"
@@ -234,7 +251,8 @@
       } else if (source === "finalMinus") {
         // Caso 3: Valore iniziale + Valore Finale - Tasso
         computedT = ((iniziale - finalMinusVal) / iniziale) * 100;
-        computedValPerc = iniziale * computedT / 100;
+        computedT = round2(computedT);
+        computedValPerc = round2(iniziale * computedT / 100);
         tassoInput.value = computedT;
         valorePercInput.value = computedValPerc;
         // Manteniamo "Finale - Tasso" e puliamo "Finale + Tasso"
@@ -259,7 +277,7 @@
       recalc();
     });
     
-    // Gestione dei bottoni "cancella"
+    // Gestione dei bottoni "cancella" accanto a ciascun campo
     document.querySelectorAll('button.clear').forEach(button => {
       button.addEventListener('click', function() {
         const targetId = this.getAttribute('data-target');
@@ -290,6 +308,21 @@
           });
         }
       });
+    });
+
+    // Gestione del tasto "Cancella Tutto"
+    document.getElementById('clearAllBtn').addEventListener('click', function() {
+      // Svuota tutti i campi
+      document.getElementById('iniziale').value = "";
+      document.getElementById('tasso').value = "";
+      document.getElementById('valorePerc').value = "";
+      document.getElementById('finalPlus').value = "";
+      document.getElementById('finalMinus').value = "";
+      // Resetta i timestamp
+      lastModified.tasso = 0;
+      lastModified.finalPlus = 0;
+      lastModified.finalMinus = 0;
+      recalc();
     });
   </script>
 </body>
