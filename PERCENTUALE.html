@@ -30,7 +30,7 @@
     .row {
       display: flex;
       align-items: center;
-      margin-bottom: 1em;
+      margin-bottom: 0.5em; /* spazio ridotto tra le righe */
     }
     .label {
       flex: 0 0 40%;
@@ -55,8 +55,9 @@
     input[readonly] {
       opacity: 0.8;
     }
+    /* Spazio ridotto tra bottoni */
     button {
-      margin-left: 0.5em;
+      margin-left: 0.2em; /* ridotto da 0.5em */
       background: none;
       border: none;
       color: #fff;
@@ -90,42 +91,40 @@
       <div class="label">Valore iniziale</div>
       <div class="input-container">
         <input id="iniziale" type="tel" placeholder="">
-        <!-- Bottone cancella (icona Unicode ❌ – U+274C) -->
         <button class="clear" data-target="iniziale">&#x274C;</button>
-        <!-- Bottone copia (icona Unicode 📋 – U+1F4CB) -->
         <button class="copy" data-target="iniziale">&#x1F4CB;</button>
       </div>
     </div>
-    <!-- Riga "Tasso %" -->
+    <!-- Riga "%" (ex "Tasso %") -->
     <div class="row">
-      <div class="label">Tasso %</div>
+      <div class="label">%</div>
       <div class="input-container">
         <input id="tasso" type="tel" placeholder="">
         <button class="clear" data-target="tasso">&#x274C;</button>
         <button class="copy" data-target="tasso">&#x1F4CB;</button>
       </div>
     </div>
-    <!-- Riga "Valore %" (calcolato) -->
+    <!-- Riga "Differenza" (ex "Valore %") -->
     <div class="row">
-      <div class="label">Valore %</div>
+      <div class="label">Differenza</div>
       <div class="input-container">
         <input id="valorePerc" type="tel" placeholder="" readonly>
         <button class="clear" data-target="valorePerc">&#x274C;</button>
         <button class="copy" data-target="valorePerc">&#x1F4CB;</button>
       </div>
     </div>
-    <!-- Riga "Valore Finale + Tasso" -->
+    <!-- Riga "Valore Finale +" (ex "Valore Finale + Tasso") -->
     <div class="row">
-      <div class="label">Valore Finale + Tasso</div>
+      <div class="label">Valore Finale +</div>
       <div class="input-container">
         <input id="finalPlus" type="tel" placeholder="">
         <button class="clear" data-target="finalPlus">&#x274C;</button>
         <button class="copy" data-target="finalPlus">&#x1F4CB;</button>
       </div>
     </div>
-    <!-- Riga "Valore Finale - Tasso" -->
+    <!-- Riga "Valore Finale -" (ex "Valore Finale - Tasso") -->
     <div class="row">
-      <div class="label">Valore Finale - Tasso</div>
+      <div class="label">Valore Finale -</div>
       <div class="input-container">
         <input id="finalMinus" type="tel" placeholder="">
         <button class="clear" data-target="finalMinus">&#x274C;</button>
@@ -170,20 +169,20 @@
      * La funzione recalc() esegue i calcoli dinamicamente.
      *
      * Le modalità sono:
-     *  • Se "Valore iniziale" e "Tasso" sono forniti: 
-     *      - Valore % = iniziale * (Tasso/100)
-     *      - Finale + = iniziale + Valore %
-     *      - Finale - = iniziale - Valore %
+     *  • Se "Valore iniziale" e "%" sono forniti: 
+     *      - Differenza = iniziale * (%/100)
+     *      - Valore Finale + = iniziale + Differenza
+     *      - Valore Finale - = iniziale - Differenza
      *
-     *  • Se "Valore iniziale" e "Valore Finale + Tasso" sono forniti:
-     *      - Tasso = ((FinalPlus - iniziale) / iniziale) * 100
-     *      - Valore % = iniziale * (Tasso/100)
-     *      - Il campo "Finale - Tasso" viene lasciato vuoto.
+     *  • Se "Valore iniziale" e "Valore Finale +" sono forniti:
+     *      - % = ((Valore Finale + - iniziale) / iniziale) * 100
+     *      - Differenza = iniziale * (%/100)
+     *      - Il campo "Valore Finale -" viene lasciato vuoto.
      *
-     *  • Se "Valore iniziale" e "Valore Finale - Tasso" sono forniti:
-     *      - Tasso = ((iniziale - FinalMinus) / iniziale) * 100
-     *      - Valore % = iniziale * (Tasso/100)
-     *      - Il campo "Finale + Tasso" viene lasciato vuoto.
+     *  • Se "Valore iniziale" e "Valore Finale -" sono forniti:
+     *      - % = ((iniziale - Valore Finale -) / iniziale) * 100
+     *      - Differenza = iniziale * (%/100)
+     *      - Il campo "Valore Finale +" viene lasciato vuoto.
      */
     function recalc() {
       if (isUpdating) return;
@@ -216,7 +215,7 @@
       let finalPlusVal = parseFloat(finalPlusStr);
       let finalMinusVal = parseFloat(finalMinusStr);
       
-      // Verifichiamo se ciascun campo contiene un numero valido
+      // Verifica se ciascun campo contiene un numero valido
       let hasTasso = tassoStr.trim() !== "" && !isNaN(tassoVal);
       let hasFinalPlus = finalPlusStr.trim() !== "" && !isNaN(finalPlusVal);
       let hasFinalMinus = finalMinusStr.trim() !== "" && !isNaN(finalMinusVal);
@@ -231,7 +230,6 @@
         // Nessun campo opzionale ha un valore: puliamo tutti gli output
         tassoInput.value = "";
         valorePercInput.value = "";
-        // Se i campi sono stati "bloccati" dall'utente li lasciamo vuoti
         if (!locked.finalPlus) finalPlusInput.value = "";
         if (!locked.finalMinus) finalMinusInput.value = "";
         isUpdating = false;
@@ -245,13 +243,12 @@
       let computedT, computedValPerc, computedFinalPlus, computedFinalMinus;
       
       if (source === "tasso") {
-        // Caso 1: Valore iniziale + Tasso
+        // Caso 1: Valore iniziale + % 
         computedT = tassoVal;
         computedValPerc = round2(iniziale * computedT / 100);
         computedFinalPlus = round2(iniziale + computedValPerc);
         computedFinalMinus = round2(iniziale - computedValPerc);
         valorePercInput.value = computedValPerc;
-        // Aggiorniamo i campi finali solo se non "bloccati"
         if (!locked.finalPlus) {
           finalPlusInput.value = computedFinalPlus;
         } else {
@@ -263,24 +260,20 @@
           finalMinusInput.value = "";
         }
       } else if (source === "finalPlus") {
-        // Caso 2: Valore iniziale + Valore Finale + Tasso
+        // Caso 2: Valore iniziale + Valore Finale +
         computedT = ((finalPlusVal - iniziale) / iniziale) * 100;
         computedT = round2(computedT);
         computedValPerc = round2(iniziale * computedT / 100);
         tassoInput.value = computedT;
         valorePercInput.value = computedValPerc;
-        // In questo caso, usiamo l'input override per finalPlus
-        // e puliamo il campo "finalMinus"
         finalMinusInput.value = "";
       } else if (source === "finalMinus") {
-        // Caso 3: Valore iniziale + Valore Finale - Tasso
+        // Caso 3: Valore iniziale + Valore Finale -
         computedT = ((iniziale - finalMinusVal) / iniziale) * 100;
         computedT = round2(computedT);
         computedValPerc = round2(iniziale * computedT / 100);
         tassoInput.value = computedT;
         valorePercInput.value = computedValPerc;
-        // In questo caso, usiamo l'input override per finalMinus
-        // e puliamo il campo "finalPlus"
         finalPlusInput.value = "";
       }
       
@@ -294,7 +287,6 @@
       recalc();
     });
     document.getElementById('finalPlus').addEventListener('input', function() {
-      // Se l'utente digita, sblocchiamo il campo
       locked.finalPlus = false;
       lastModified["finalPlus"] = Date.now();
       recalc();
@@ -315,7 +307,6 @@
         if (lastModified.hasOwnProperty(targetId)) {
           lastModified[targetId] = 0;
         }
-        // Se il campo cancellato è "finalPlus" o "finalMinus", lo blocchiamo
         if (targetId === "finalPlus" || targetId === "finalMinus") {
           locked[targetId] = true;
         }
@@ -330,7 +321,6 @@
         const targetInput = document.getElementById(targetId);
         if (targetInput.value.trim() !== "") {
           navigator.clipboard.writeText(targetInput.value).then(() => {
-            // Aggiunge la classe per far lampeggiare il campo per 1 secondo
             targetInput.classList.add('blink');
             setTimeout(() => {
               targetInput.classList.remove('blink');
@@ -344,13 +334,11 @@
 
     // Gestione del tasto "Reset" (Cancella Tutto)
     document.getElementById('clearAllBtn').addEventListener('click', function() {
-      // Svuota tutti i campi
       document.getElementById('iniziale').value = "";
       document.getElementById('tasso').value = "";
       document.getElementById('valorePerc').value = "";
       document.getElementById('finalPlus').value = "";
       document.getElementById('finalMinus').value = "";
-      // Resetta i timestamp e i flag di blocco
       lastModified.tasso = 0;
       lastModified.finalPlus = 0;
       lastModified.finalMinus = 0;
