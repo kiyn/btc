@@ -5,6 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calcolo Percentuale</title>
   <style>
+    /* Blocca l'altezza della pagina e disabilita lo scroll */
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
     /* Impostazioni globali per tema scuro e background nero */
     body {
       background-color: #000;
@@ -61,15 +66,15 @@
     button:focus {
       outline: none;
     }
-    /* Pulsante "Cancella Tutto" centrato in basso */
+    /* Pulsante "Reset" (Cancella Tutto) centrato in basso */
     #clearAllBtn {
       font-size: 1.4em;
       padding: 0.5em 1em;
       margin-top: 1em;
     }
-    /* Effetto blink: il campo lampeggia per 0.5 secondi dopo copia */
+    /* Effetto blink: il campo lampeggia per 1 secondo dopo copia */
     .blink {
-      animation: blink-animation 0.5s;
+      animation: blink-animation 1s;
     }
     @keyframes blink-animation {
       0% { background-color: #444; }
@@ -127,10 +132,10 @@
         <button class="copy" data-target="finalMinus">&#x1F4CB;</button>
       </div>
     </div>
-    <!-- Riga per il tasto "Cancella Tutto" -->
+    <!-- Riga per il tasto "Reset" (Cancella Tutto) -->
     <div class="row">
       <div style="width: 100%; text-align: center;">
-        <button id="clearAllBtn" title="Cancella tutti i campi">&#x274C;</button>
+        <button id="clearAllBtn" title="Cancella tutti i campi">&#x274C; Reset</button>
       </div>
     </div>
   </div>
@@ -139,6 +144,7 @@
     /******************
      * Logica JavaScript
      ******************/
+
     // Funzione di arrotondamento a due cifre decimali
     function round2(value) {
       return Number(value.toFixed(2));
@@ -146,11 +152,18 @@
 
     // Flag per evitare cicli durante l'aggiornamento
     let isUpdating = false;
+
     // Memorizziamo l'ultimo aggiornamento (timestamp) per ciascun campo opzionale
     let lastModified = {
-      "tasso": 0,
-      "finalPlus": 0,
-      "finalMinus": 0
+      tasso: 0,
+      finalPlus: 0,
+      finalMinus: 0
+    };
+
+    // Flag per "bloccare" i campi finali se cancellati manualmente
+    let locked = {
+      finalPlus: false,
+      finalMinus: false
     };
 
     /**
@@ -218,8 +231,9 @@
         // Nessun campo opzionale ha un valore: puliamo tutti gli output
         tassoInput.value = "";
         valorePercInput.value = "";
-        finalPlusInput.value = "";
-        finalMinusInput.value = "";
+        // Se i campi sono stati "bloccati" dall'utente li lasciamo vuoti
+        if (!locked.finalPlus) finalPlusInput.value = "";
+        if (!locked.finalMinus) finalMinusInput.value = "";
         isUpdating = false;
         return;
       }
@@ -237,8 +251,17 @@
         computedFinalPlus = round2(iniziale + computedValPerc);
         computedFinalMinus = round2(iniziale - computedValPerc);
         valorePercInput.value = computedValPerc;
-        finalPlusInput.value = computedFinalPlus;
-        finalMinusInput.value = computedFinalMinus;
+        // Aggiorniamo i campi finali solo se non "bloccati"
+        if (!locked.finalPlus) {
+          finalPlusInput.value = computedFinalPlus;
+        } else {
+          finalPlusInput.value = "";
+        }
+        if (!locked.finalMinus) {
+          finalMinusInput.value = computedFinalMinus;
+        } else {
+          finalMinusInput.value = "";
+        }
       } else if (source === "finalPlus") {
         // Caso 2: Valore iniziale + Valore Finale + Tasso
         computedT = ((finalPlusVal - iniziale) / iniziale) * 100;
@@ -246,7 +269,8 @@
         computedValPerc = round2(iniziale * computedT / 100);
         tassoInput.value = computedT;
         valorePercInput.value = computedValPerc;
-        // Manteniamo "Finale + Tasso" e puliamo "Finale - Tasso"
+        // In questo caso, usiamo l'input override per finalPlus
+        // e puliamo il campo "finalMinus"
         finalMinusInput.value = "";
       } else if (source === "finalMinus") {
         // Caso 3: Valore iniziale + Valore Finale - Tasso
@@ -255,7 +279,8 @@
         computedValPerc = round2(iniziale * computedT / 100);
         tassoInput.value = computedT;
         valorePercInput.value = computedValPerc;
-        // Manteniamo "Finale - Tasso" e puliamo "Finale + Tasso"
+        // In questo caso, usiamo l'input override per finalMinus
+        // e puliamo il campo "finalPlus"
         finalPlusInput.value = "";
       }
       
@@ -269,10 +294,13 @@
       recalc();
     });
     document.getElementById('finalPlus').addEventListener('input', function() {
+      // Se l'utente digita, sblocchiamo il campo
+      locked.finalPlus = false;
       lastModified["finalPlus"] = Date.now();
       recalc();
     });
     document.getElementById('finalMinus').addEventListener('input', function() {
+      locked.finalMinus = false;
       lastModified["finalMinus"] = Date.now();
       recalc();
     });
@@ -287,6 +315,10 @@
         if (lastModified.hasOwnProperty(targetId)) {
           lastModified[targetId] = 0;
         }
+        // Se il campo cancellato è "finalPlus" o "finalMinus", lo blocchiamo
+        if (targetId === "finalPlus" || targetId === "finalMinus") {
+          locked[targetId] = true;
+        }
         recalc();
       });
     });
@@ -298,11 +330,11 @@
         const targetInput = document.getElementById(targetId);
         if (targetInput.value.trim() !== "") {
           navigator.clipboard.writeText(targetInput.value).then(() => {
-            // Aggiunge la classe per far lampeggiare il campo per 0.5 secondi
+            // Aggiunge la classe per far lampeggiare il campo per 1 secondo
             targetInput.classList.add('blink');
             setTimeout(() => {
               targetInput.classList.remove('blink');
-            }, 500);
+            }, 1000);
           }).catch(err => {
             console.error('Errore nella copia: ', err);
           });
@@ -310,7 +342,7 @@
       });
     });
 
-    // Gestione del tasto "Cancella Tutto"
+    // Gestione del tasto "Reset" (Cancella Tutto)
     document.getElementById('clearAllBtn').addEventListener('click', function() {
       // Svuota tutti i campi
       document.getElementById('iniziale').value = "";
@@ -318,10 +350,12 @@
       document.getElementById('valorePerc').value = "";
       document.getElementById('finalPlus').value = "";
       document.getElementById('finalMinus').value = "";
-      // Resetta i timestamp
+      // Resetta i timestamp e i flag di blocco
       lastModified.tasso = 0;
       lastModified.finalPlus = 0;
       lastModified.finalMinus = 0;
+      locked.finalPlus = false;
+      locked.finalMinus = false;
       recalc();
     });
   </script>
